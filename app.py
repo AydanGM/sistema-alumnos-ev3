@@ -47,6 +47,11 @@ SOSPECHOSAS = Counter("peticiones_sospechosas_total", "Peticiones con patrones d
 APP_INFO = Gauge("app_info", "Versión desplegada de la aplicación", ["version"])
 APP_INFO.labels(version=VERSION).set(1)
 
+## VULN-05: intentos fallidos de login por IP (máximo permitido antes de bloquear).
+MAX_INTENTOS = 5
+## Contador de intentos fallidos por IP (se reinicia cuando se vuelve a desplegar la app).
+INTENTOS_FALLIDOS = {}
+
 ## Patrones que delatan un intento de ataque (detección, no bloqueo).
 PATRONES_ATAQUE = {
     "xss": re.compile(r"<\s*script|javascript:|onerror\s*=|onload\s*=|<\s*img", re.I),
@@ -221,13 +226,19 @@ def buscar_alumnos():
 def login():
     """!
     @brief Valida las credenciales del administrador enviadas por formulario.
-    @return JSON con el resultado; 401 si las credenciales no son válidas.
+    @return JSON con el resultado; 401 si las credenciales no son válidas; 429 tras 5 intentos fallidos.
     """
+    ip = request.remote_addr
+    if INTENTOS_FALLIDOS.get(ip, 0) >= MAX_INTENTOS:
+        LOGIN_FALLIDOS.inc()
+        return jsonify({"error": "Demasiados intentos fallidos"}), 429
     usuario = request.form.get("usuario", "")
     clave = request.form.get("clave", "")
     if ADMIN_CLAVE_HASH and usuario == ADMIN_USUARIO and check_password_hash(ADMIN_CLAVE_HASH, clave):
+        INTENTOS_FALLIDOS[ip] = 0
         LOGIN_EXITOSOS.inc()
         return jsonify({"mensaje": "Bienvenido, administrador"})
+    INTENTOS_FALLIDOS[ip] = INTENTOS_FALLIDOS.get(ip, 0) + 1
     LOGIN_FALLIDOS.inc()
     app.logger.warning("Login fallido para el usuario '%s' desde %s", usuario, request.remote_addr)
     return jsonify({"error": "Credenciales inválidas"}), 401
