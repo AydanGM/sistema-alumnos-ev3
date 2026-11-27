@@ -1,0 +1,13 @@
+# Dependabot revisa a diario las dependencias de Python (requirements.txt y requirements-dev.txt)
+# y abre un Pull Request con las versiones nuevas.
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    # Todas las dependencias en un solo PR: Flask 3 necesita Werkzeug 3, deben actualizarse juntas
+    groups:
+      dependencias-python:
+        patterns:
+          - "*"
