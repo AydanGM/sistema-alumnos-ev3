@@ -11,7 +11,7 @@ import secrets
 import sqlite3
 import time
 
-from flask import Flask, Response, g, jsonify, render_template_string, request
+from flask import Flask, Response, g, jsonify, render_template_string, request, session
 from markupsafe import escape
 from werkzeug.security import check_password_hash
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
@@ -22,6 +22,8 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 ## Usuario administrador.
 ADMIN_USUARIO = "admin"
+## VULN-06: la cookie de sesión no se envía desde otros sitios (apoya la protección anti-CSRF).
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 ## Hash de la clave del administrador: viene de una variable de entorno, nunca escrito en el código.
 ## Si no está definido, nadie puede entrar como administrador.
 ADMIN_CLAVE_HASH = os.environ.get("ADMIN_CLAVE_HASH", "")
@@ -76,6 +78,7 @@ PORTADA = """<!doctype html>
 </form>
 <h2>Acceso administrador</h2>
 <form action="/login" method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <input name="usuario" value="admin"> <input name="clave" type="password" value="">
   <button type="submit">Entrar</button>
 </form>
@@ -150,7 +153,10 @@ def portada():
     @brief Portada HTML con enlaces y formularios del sistema.
     @return Página HTML.
     """
-    return render_template_string(PORTADA, version=VERSION)
+    # VULN-06: token anti-CSRF guardado en la sesión y enviado en el formulario de login
+    if "csrf_token" not in session:
+        session["csrf_token"] = secrets.token_hex(16)
+    return render_template_string(PORTADA, version=VERSION, csrf_token=session["csrf_token"])
 
 
 @app.route("/hello")
@@ -228,6 +234,9 @@ def login():
     @brief Valida las credenciales del administrador enviadas por formulario.
     @return JSON con el resultado; 401 si las credenciales no son válidas; 429 tras 5 intentos fallidos.
     """
+    # VULN-06: se rechaza el login si no trae el token anti-CSRF de la sesión
+    if "csrf_token" not in session or request.form.get("csrf_token") != session["csrf_token"]:
+        return jsonify({"error": "Token CSRF inválido"}), 400
     ip = request.remote_addr
     if INTENTOS_FALLIDOS.get(ip, 0) >= MAX_INTENTOS:
         LOGIN_FALLIDOS.inc()
