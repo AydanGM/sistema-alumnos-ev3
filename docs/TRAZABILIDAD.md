@@ -10,3 +10,4 @@ Cada fila la agrega Jenkins al terminar un build (`scripts/trazabilidad.py`).
 | 4 | 2026-11-27 21:45 | 1.0.4+e8fa6b5 | `e8fa6b5` | VULN-04: secretos desde el entorno y hash seguro de la clave admin | 9/9 OK | 0/0/0 | 20 vuln. | 0/3/1 | UNSTABLE | no desplegado |
 | 5 | 2026-11-27 21:56 | 1.0.5+50b1d92 | `50b1d92` | VULN-07: cabeceras de seguridad HTTP | 9/9 OK | 0/0/0 | 20 vuln. | 0/0/0 | UNSTABLE | no desplegado |
 | 6 | 2026-11-27 22:08 | 1.0.6+3acfe5b | `3acfe5b` | Merge pull request #1 from AydanGM/dependabot/pip/dependencias-python- | 9/9 OK | 0/0/0 | 0 vuln. | 0/0/0 | SUCCESS | 1.0.6+3acfe5b |
+| 7 | 2026-11-27 22:26 | 1.0.7+8266616 | `8266616` | DOC: registro de seguridad y trazabilidad del pipeline | 9/9 OK | 0/0/0 | 0 vuln. | 0/0/0 | SUCCESS | 1.0.7+8266616 |
