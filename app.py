@@ -140,6 +140,10 @@ def despues_de_la_peticion(respuesta):
     @param respuesta Respuesta que Flask enviará al cliente.
     @return La misma respuesta.
     """
+    # VULN-07: cabeceras de seguridad que pide OWASP ZAP
+    respuesta.headers["Content-Security-Policy"] = "default-src 'self'; form-action 'self'; frame-ancestors 'none'"
+    respuesta.headers["X-Frame-Options"] = "DENY"
+    respuesta.headers["X-Content-Type-Options"] = "nosniff"
     endpoint = request.url_rule.rule if request.url_rule else "desconocido"
     if endpoint != "/metrics":
         HTTP_PETICIONES.labels(request.method, endpoint, str(respuesta.status_code)).inc()
