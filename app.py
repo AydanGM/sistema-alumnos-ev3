@@ -242,4 +242,5 @@ def metrics():
 iniciar_db()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # VULN-03: sin modo debug y solo en localhost (los entornos usan gunicorn)
+    app.run(host="127.0.0.1", port=5000, debug=False)
