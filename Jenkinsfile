@@ -50,11 +50,48 @@ pipeline {
         }
 
         // >>> [SEGURIDAD]: aquí van las etapas "Security Review (SAST)" y "Dependency Management"
+        stage('Security Review (SAST)') {
+            steps {
+                // Si Bandit encuentra hallazgos Medium o High, el build queda INESTABLE
+                catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                    sh 'bandit -r app.py -f json -o reports/bandit.json --exit-zero'
+                    sh 'bandit -r app.py -f txt -o reports/bandit.txt --exit-zero'
+                    sh 'cat reports/bandit.txt'
+                    sh 'bandit -q -ll -r app.py'
+                }
+            }
+        }
+
+        stage('Dependency Management') {
+            steps {
+                // Si pip-audit encuentra dependencias con vulnerabilidades conocidas, el build queda INESTABLE
+                catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                    sh 'pip-audit -r requirements.txt -r requirements-dev.txt -f json -o reports/pip-audit.json || true'
+                    sh 'pip-audit -r requirements.txt -r requirements-dev.txt'
+                }
+            }
+        }
 
         // >>> [ZAP]: aquí van las etapas "Deploy Staging" y "DAST - OWASP ZAP"
+        stage('Deploy Staging') {
+            steps {
+                sh 'bash scripts/deploy.sh staging 5001'
+            }
+        }
+
+        stage('DAST - OWASP ZAP') {
+            steps {
+                // Si ZAP encuentra alertas High o Medium, el build queda INESTABLE
+                catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                    sh 'python3 scripts/zap_scan.py http://jenkins:5001'
+                }
+            }
+        }
 
         stage('Deploy Producción') {
             // >>> [GATE]: aquí va la condición "when" que protege producción
+            // Solo se despliega a producción si el build no tiene ningún hallazgo (SUCCESS)
+            when { expression { currentBuild.currentResult == 'SUCCESS' } }
             steps {
                 sh 'bash scripts/deploy.sh produccion 5000'
                 script { env.PRODUCCION = env.APP_VERSION }
